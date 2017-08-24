@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/AndroidCommonDiscreLibrary.iml" filepath="$PROJECT_DIR$/AndroidCommonDiscreLibrary.iml" />
+      <module fileurl="file://$PROJECT_DIR$/CommonRecyclerViewLibrary/CommonRecyclerViewLibrary.iml" filepath="$PROJECT_DIR$/CommonRecyclerViewLibrary/CommonRecyclerViewLibrary.iml" />
       <module fileurl="file://$PROJECT_DIR$/sample/sample.iml" filepath="$PROJECT_DIR$/sample/sample.iml" />
     </modules>
   </component>
