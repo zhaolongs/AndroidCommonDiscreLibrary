@@ -1,6 +1,7 @@
 package com.androidlongs.pullrefreshrecyclerylib.common;
 
 import android.animation.Animator;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -21,8 +22,6 @@ import android.view.ViewTreeObserver;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
-import android.view.animation.OvershootInterpolator;
-import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -45,7 +44,7 @@ import java.util.List;
  * 落在谷底，思人生
  */
 
-public class PullRecyclerViewUtils {
+public class PullRecyclerViewUtils<T> {
 
     private PullCustomRecyclerView mRecyclerView;
     private LinearLayoutManager mLinearLayoutManager;
@@ -61,6 +60,9 @@ public class PullRecyclerViewUtils {
     private QuickIndexBar mQuickIndexBar;
 
     private Handler mHandler = new Handler(Looper.getMainLooper());
+    private ImageView mLoadingNoDataImageView;
+    private ObjectAnimator mClickNoDataHidIngAndShowDataAnimator;
+    private ObjectAnimator mClickNoDataHidIngAndShowNoDataAnimator;
 
     private PullRecyclerViewUtils() {
 
@@ -83,7 +85,7 @@ public class PullRecyclerViewUtils {
     //回调接口
     private PullRecyclerViewLinserner mPullRecyclerViewLinserner;
     //数据
-    private List<Object> mStringList;
+    private List<T> mStringList;
 
     private boolean mIsOneceRemoveRefreshLayout = false;
 
@@ -104,8 +106,8 @@ public class PullRecyclerViewUtils {
      * @param list         数据集合
      * @param linserner    回调监听
      */
-    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<Object> list, PullRecyclerViewLinserner linserner) {
-        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, null, RECYCLRYVIEW_STATUE.PULL_AND_UP, SHOW_DEFAUTLE_PAGE_TYPE.LOADING);
+    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<T> list, PullRecyclerViewLinserner linserner) {
+        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, null, RECYCLRYVIEW_STATUE.PULL_AND_UP, SHOW_DEFAUTLE_PAGE_TYPE.LOADING, LOADING_NO_DATA_PAGE_TYPE.TEXT);
     }
 
     /**
@@ -117,19 +119,57 @@ public class PullRecyclerViewUtils {
      * @param linserner          回调监听
      * @param itemClickLinserner 条目点击监听
      */
-    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<Object> list, PullRecyclerViewLinserner linserner, PullRecyclerViewOnItemClickLinserner itemClickLinserner) {
-        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, itemClickLinserner, RECYCLRYVIEW_STATUE.PULL_AND_UP, SHOW_DEFAUTLE_PAGE_TYPE.LOADING);
+    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<T> list, PullRecyclerViewLinserner linserner, PullRecyclerViewOnItemClickLinserner itemClickLinserner) {
+        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, itemClickLinserner, RECYCLRYVIEW_STATUE.PULL_AND_UP, SHOW_DEFAUTLE_PAGE_TYPE.LOADING, LOADING_NO_DATA_PAGE_TYPE.TEXT);
     }
 
-    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<Object> list, SHOW_DEFAUTLE_PAGE_TYPE page_type, PullRecyclerViewLinserner linserner, PullRecyclerViewOnItemClickLinserner itemClickLinserner) {
-        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, itemClickLinserner, RECYCLRYVIEW_STATUE.PULL_AND_UP, page_type);
+    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<T> list, SHOW_DEFAUTLE_PAGE_TYPE page_type, PullRecyclerViewLinserner linserner, PullRecyclerViewOnItemClickLinserner itemClickLinserner) {
+        return setRecyclerViewFunction(context, itemLayoutId, list, linserner, itemClickLinserner, RECYCLRYVIEW_STATUE.PULL_AND_UP, page_type, LOADING_NO_DATA_PAGE_TYPE.TEXT);
     }
 
     /**
-     * @param itemLayoutId 布局ID
+     * @param context      上下文对象
+     * @param itemLayoutId 条目布局
+     * @param linserner    设置监听
+     */
+    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, PullRecyclerViewLinserner linserner, SHOW_DEFAUTLE_PAGE_TYPE defautlePageType) {
+        return setRecyclerViewFunction(context, itemLayoutId, null, linserner, null, RECYCLRYVIEW_STATUE.PULL_AND_UP, defautlePageType, LOADING_NO_DATA_PAGE_TYPE.TEXT);
+    }
+
+    /**
+     * @param context            上下文对象
+     * @param itemLayoutId       布局ID
+     *                           多布局状态下 传 -1
+     * @param list               数据
+     *                           多布局下 list数据为 PullRecyclerMoreStatueModel
+     * @param linserner          操作回调
+     * @param itemClickLinserner 条目点击事件回调
+     * @param statue             功能设置
+     *                           RECYCLRYVIEW_STATUE.NORMAL,//正常状态下，没有下拉刷新也没有上拉加载更多
+     *                           RECYCLRYVIEW_STATUE.PULL_REFRESH,//只有下拉刷新功能
+     *                           RECYCLRYVIEW_STATUE.UP_LOAD_MORE,//只有上拉加载更多功能
+     *                           RECYCLRYVIEW_STATUE.PULL_AND_UP//下拉刷新 上拉加载功能
+     * @param defautle_page_type 默认显示页面 @see SHOW_DEFAUTLE_PAGE_TYPE
+     *                           SHOW_DEFAUTLE_PAGE_TYPE.NO_DATA,//无数据
+     *                           SHOW_DEFAUTLE_PAGE_TYPE.LOADING//加载中
+     * @param noDataPageType     默认显示页面 无数据状态显示类型
+     *                           LOADING_NO_DATA_PAGE_TYPE.IMAGE,//只显示图片
+     *                           LOADING_NO_DATA_PAGE_TYPE.IMAGE_AND_TEXT,//显示图片和文字
+     *                           LOADING_NO_DATA_PAGE_TYPE.TEXT//只显示文字
+     * @see SHOW_DEFAUTLE_PAGE_TYPE  默认显示页面
+     * @see RECYCLRYVIEW_STATUE 功能设置
+     * @see LOADING_NO_DATA_PAGE_TYPE 无数据页面显示类型
      */
     @SuppressLint("ClickableViewAccessibility")
-    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<Object> list, PullRecyclerViewLinserner linserner, PullRecyclerViewOnItemClickLinserner itemClickLinserner, RECYCLRYVIEW_STATUE statue, SHOW_DEFAUTLE_PAGE_TYPE defautle_page_type) {
+    public RelativeLayout setRecyclerViewFunction(
+            Context context,
+            int itemLayoutId,
+            List<T> list,
+            PullRecyclerViewLinserner linserner,
+            PullRecyclerViewOnItemClickLinserner itemClickLinserner,
+            RECYCLRYVIEW_STATUE statue,
+            SHOW_DEFAUTLE_PAGE_TYPE defautle_page_type,
+            LOADING_NO_DATA_PAGE_TYPE noDataPageType) {
         if (mRecyclerView == null) {
             mContext = context;
             //单布局
@@ -137,7 +177,12 @@ public class PullRecyclerViewUtils {
             //加载数据回调监听
             mPullRecyclerViewLinserner = linserner;
             //数据集合
-            mStringList = list;
+            if (list == null) {
+                mStringList = new ArrayList<>();
+            } else {
+                mStringList = list;
+            }
+
             //当前RecyclerView 的显示功能模式
             mCurrentStatue = statue;
             //条目点击回调
@@ -145,6 +190,9 @@ public class PullRecyclerViewUtils {
 
             //当前默认显示的页面
             mCurrentShowDefaultType = defautle_page_type;
+
+            //当前默认页面显示无数据类型
+            mCurrentLoadingNoDataType = noDataPageType;
 
             DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
             float scaledDensity = displayMetrics.scaledDensity;
@@ -155,8 +203,23 @@ public class PullRecyclerViewUtils {
             mLoadingNoDataLinearLayout = (LinearLayout) mMainRefreshView.findViewById(R.id.ll_pull_refresh_loading_no_data);
             //加载无数数据显示文字
             mLoadingNoDataTextView = (TextView) mMainRefreshView.findViewById(R.id.tv_pull_refresh_loading_no_data);
+            mLoadingNoDataImageView = (ImageView) mMainRefreshView.findViewById(R.id.iv_pull_refresh_loading_no_data);
             mLoadingNoDataTextView.setOnClickListener(mNoDataOnClickListener);
 
+            switch (mCurrentLoadingNoDataType) {
+                case TEXT:
+                    mLoadingNoDataImageView.setVisibility(View.GONE);
+                    mLoadingNoDataTextView.setVisibility(View.VISIBLE);
+                    break;
+                case IMAGE:
+                    mLoadingNoDataImageView.setVisibility(View.VISIBLE);
+                    mLoadingNoDataTextView.setVisibility(View.GONE);
+                    break;
+                case IMAGE_AND_TEXT:
+                    mLoadingNoDataImageView.setVisibility(View.VISIBLE);
+                    mLoadingNoDataTextView.setVisibility(View.VISIBLE);
+                    break;
+            }
 
             //索引
             mQuickIndexBar = (QuickIndexBar) mMainRefreshView.findViewById(R.id.pull_refresh_index_bar);
@@ -170,15 +233,46 @@ public class PullRecyclerViewUtils {
 
             switch (mCurrentShowDefaultType) {
                 case LOADING:
-                    //隐藏
-                    mLoadingIngLinearLayout.setVisibility(View.VISIBLE);
-                    mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                    /**
+                     * 默认显示加载中页面
+                     * @see mStringList size 为0 显示加载中页页面，否则显示数据页面
+                     * @see mCurrentShowDefaultType 不前显示的页面类型
+                     * @see mLoadingIngLinearLayout 加载中页面
+                     * @see mLoadingNoDataLinearLayout 无数据页面
+                     * @see mNetLoadingStatue 当前网络加载状态
+                     */
+                    if (mStringList == null || mStringList.size() == 0) {
+                        //显示加载中
+                        mLoadingIngLinearLayout.setVisibility(View.VISIBLE);
+                        //隐藏无数据页面
+                        mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                        //更新网络加载标识
+                        mNetLoadingStatue = NETLOADINGSTATE.DEFAULT_LOADING;
+                    } else {
+                        //隐藏加载中
+                        mLoadingIngLinearLayout.setVisibility(View.GONE);
+                        //隐藏无数据
+                        mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                        //更新网络无加载标识
+                        mNetLoadingStatue = NETLOADINGSTATE.NO_LOADING;
+                    }
                     break;
                 case NO_DATA:
-                    mLoadingIngLinearLayout.setVisibility(View.GONE);
-                    mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    /**
+                     * 默认显示无数据页面
+                     * @see mStringList size 为0 显示无数据页页面，否则显示数据页面
+                     **/
+                    if (mStringList == null || mStringList.size() == 0) {
+                        mLoadingIngLinearLayout.setVisibility(View.GONE);
+                        mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    } else {
+                        mLoadingIngLinearLayout.setVisibility(View.GONE);
+                        mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                        mNetLoadingStatue = NETLOADINGSTATE.NO_LOADING;
+                    }
                     break;
             }
+
 
             //主显示背景
             mMainBackgroundRelativeLayout = (LinearLayout) mMainRefreshView.findViewById(R.id.ll_root_background);
@@ -240,6 +334,7 @@ public class PullRecyclerViewUtils {
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
+            log(" itemviewType is ---  " + viewType);
 
             //单一布局情况
             if (viewType == 0) {
@@ -248,11 +343,11 @@ public class PullRecyclerViewUtils {
                 //创建ViewHolder
                 CustomViewHolder customViewHolder = new CustomViewHolder(view, mPullRecyclerViewLinserner, mPullRecyclerViewOnItemClickLinserner);
                 return customViewHolder;
-            } else if (viewType == 1) {
+            } else if (viewType == -11) {
                 //最后一个条目设置刷新布局显示
                 View view = View.inflate(mContext, R.layout.refresh_view_footer, null);
                 //创建ViewHolder
-                UpLoadViewHolder customViewHolder = new UpLoadViewHolder(view, mContext, mPullRecyclerViewLinserner);
+                UpLoadViewHolder customViewHolder = new UpLoadViewHolder(view, mContext, mOnLastItemClickListerner);
                 return customViewHolder;
             } else {
                 //其他多布局模式
@@ -270,6 +365,7 @@ public class PullRecyclerViewUtils {
 
             //根据position来获取ViewHolder的类型
             int itemViewType = this.getItemViewType(position);
+            log(" itemviewType is " + itemViewType);
 
 
             if (itemViewType == 0) {
@@ -280,7 +376,7 @@ public class PullRecyclerViewUtils {
                 //设置数据
                 viewHolder.setDatas(position, itemViewType, s);
 
-            } else if (itemViewType == 1) {
+            } else if (itemViewType == -11) {
                 //最后一个条目 获取刷新布局对应的Holder
                 UpLoadViewHolder viewHolder = (UpLoadViewHolder) holder;
                 viewHolder.setDatas(position, mCurrentUpLoadingStatue, mLoadingMoreTextColor, mLoadingMoreBackGroundColor);
@@ -324,7 +420,7 @@ public class PullRecyclerViewUtils {
                     if (position == mStringList.size()) {
                         //如果是最后一个条目 那么返回1
                         //用来加载显示刷新布局
-                        return 1;
+                        return -11;
                     } else {
                         Object lO = mStringList.get(position);
                         if (lO instanceof PullRecyclerMoreStatueModel) {
@@ -435,7 +531,7 @@ public class PullRecyclerViewUtils {
 
                                 int size = 0;
 
-                                if (mStringList != null) {
+                                if (mStringList != null && mStringList.size() > 0) {
                                     size = mStringList.size();
                                 }
 
@@ -444,6 +540,8 @@ public class PullRecyclerViewUtils {
                                 if (mPullRecyclerViewLinserner != null) {
                                     mPullRecyclerViewLinserner.loadMoreData();
                                 }
+                                //更新网络加载状态
+                                mNetLoadingStatue = NETLOADINGSTATE.UP_LOADING;
 
                             }
                         }
@@ -482,7 +580,20 @@ public class PullRecyclerViewUtils {
         PULL_LOADING_FINISH//显示刷新完毕
     }
 
+    /**
+     * 网络加载标识
+     */
+    public enum NETLOADINGSTATE {
+        NO_LOADING,//无加载
+        DEFAULT_LOADING,//默认加载
+        PULL_LOADING,//下拉加载中
+        UP_LOADING,//上拉加载中
+        CLICK_NO_DATA//无数据下点击加载
+    }
 
+
+    //网络加载标识
+    private NETLOADINGSTATE mNetLoadingStatue = NETLOADINGSTATE.DEFAULT_LOADING;
     //滑动自动回弹的时间
     private long mPullDuration = 200;
     //手指按下的位置
@@ -823,14 +934,16 @@ public class PullRecyclerViewUtils {
                                 if (mCurrentRefresState != RefresState.PULL_LOADING) {
                                     mCurrentRefresState = RefresState.PULL_LOADING;
                                     //加载更多数据方法
-                                    //下拉加载更多回调
+                                    //下拉加载刷新回调
                                     if (mPullRecyclerViewLinserner != null) {
                                         mPullRecyclerViewLinserner.loadingRefresDataFunction();
                                     }
 
                                 }
-
                                 mCurrentRefresState = RefresState.PULL_LOADING;
+                                //更新网络加载状 为下拉刷新状态
+                                mNetLoadingStatue = NETLOADINGSTATE.PULL_LOADING;
+
                             }
 
                             @Override
@@ -949,16 +1062,6 @@ public class PullRecyclerViewUtils {
         mCurrentRefresState = RefresState.PULL_LOADING_FINISH;
         //更新显示
         mPullRefTextView.setText("刷新数据完成");
-        //隐藏加载中
-
-        hidLoadingIngFucntion();
-
-        if (mStringList.size() == 0) {
-            //显示无数据页面
-            showLoadingNoDataFunction();
-        } else {
-            hidLoadingNoDataFunction();
-        }
 
         if (mIsDown) {
             //正在滑动中不需要结束布局显示
@@ -1078,7 +1181,7 @@ public class PullRecyclerViewUtils {
                 mPullRecyclerViewLinserner.setViewDatas(itemView, position, itemType, object);
             }
             if (itemView != null && itemView instanceof ViewGroup) {
-                if (((ViewGroup) itemView).getChildCount() > 0) {
+                if (((ViewGroup) itemView).getChildCount() > 0 && ((ViewGroup) itemView).getChildAt(0) != null) {
                     ((ViewGroup) itemView).getChildAt(0).setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
@@ -1095,6 +1198,25 @@ public class PullRecyclerViewUtils {
 
     }
 
+    //
+    public interface OnLastItemClickListerner {
+
+        void loadMoreData();
+    }
+
+    public OnLastItemClickListerner mOnLastItemClickListerner = new OnLastItemClickListerner() {
+
+        @Override
+        public void loadMoreData() {
+            //点击条目最后一条 加载更多
+            if (mPullRecyclerViewLinserner != null) {
+                mPullRecyclerViewLinserner.loadMoreData();
+            }
+
+            //网络加载标识 加载更多
+            mNetLoadingStatue = NETLOADINGSTATE.UP_LOADING;
+        }
+    };
 
     //上拉加载更多的 ViewHolder
     private static class UpLoadViewHolder extends RecyclerView.ViewHolder {
@@ -1106,12 +1228,12 @@ public class PullRecyclerViewUtils {
         private final ProgressBar mLoadingMoreProgressBar;
         private final RelativeLayout mRootView;
 
-        private PullRecyclerViewLinserner mPullRecyclerViewLinserner;
+        private OnLastItemClickListerner mOnLastItemClickListerner;
 
-        public UpLoadViewHolder(View itemView, Context context, PullRecyclerViewLinserner linserner) {
+        public UpLoadViewHolder(View itemView, Context context, OnLastItemClickListerner linserner) {
             super(itemView);
             mContext = context;
-            mPullRecyclerViewLinserner = linserner;
+            mOnLastItemClickListerner = linserner;
             mRootView = (RelativeLayout) itemView.findViewById(R.id.rl_loadiing_more_rootview);
             mLoadingMoreProgressBar = (ProgressBar) itemView.findViewById(R.id.pb_loading_more);
             mTextView = (TextView) itemView.findViewById(R.id.tv_loading_more);
@@ -1123,6 +1245,7 @@ public class PullRecyclerViewUtils {
 
         public void setDatas(int position, RECYCLERVIEW_UP_LOADING_STATUE currentStatue, int loadingMoreTextColor, int loadingMoreBackGroundColor) {
 
+            Log.d("recy", "设置加载更多布局");
             //设置显示字体颜色
             mTextView.setTextColor(loadingMoreTextColor);
             //设置显示背景颜色
@@ -1136,12 +1259,12 @@ public class PullRecyclerViewUtils {
                 mTextView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        if (mPullRecyclerViewLinserner != null) {
+                        if (mOnLastItemClickListerner != null) {
                             mTextView.setOnClickListener(null);
                             mTextView.setText(mLoadingMoreString);
                             mLoadingMoreProgressBar.setVisibility(View.VISIBLE);
                             //回调
-                            mPullRecyclerViewLinserner.loadMoreData();
+                            mOnLastItemClickListerner.loadMoreData();
                         }
                     }
                 });
@@ -1159,11 +1282,25 @@ public class PullRecyclerViewUtils {
     //功能 状态
     private RECYCLRYVIEW_STATUE mCurrentStatue = RECYCLRYVIEW_STATUE.PULL_AND_UP;
 
+    /***
+     * RecyclerView 功能设置
+     */
     public enum RECYCLRYVIEW_STATUE {
         NORMAL,//正常状态下，没有下拉刷新也没有上拉加载更多
         PULL_REFRESH,//只有下拉刷新功能
         UP_LOAD_MORE,//只有上拉加载更多功能
         PULL_AND_UP//下拉刷新 上拉加载功能
+    }
+
+    private LOADING_NO_DATA_PAGE_TYPE mCurrentLoadingNoDataType = LOADING_NO_DATA_PAGE_TYPE.TEXT;
+
+    /**
+     * 默认显示无数据页面显示类型
+     */
+    public enum LOADING_NO_DATA_PAGE_TYPE {
+        IMAGE,//只显示图片
+        IMAGE_AND_TEXT,//显示图片和文字
+        TEXT//只显示文字
     }
 
     private RECYCLERVIEW_UP_LOADING_STATUE mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_NOT_NULL;
@@ -1178,16 +1315,15 @@ public class PullRecyclerViewUtils {
     //--------------------------------------------------------------------------------------------------
     //更新新数据 更新所有的数据
     //下拉刷新时可以使用
-    public void updateDataList(List<Object> list) {
+    public void updateDataList(List<T> list) {
         if (list == null) {
             list = new ArrayList<>();
         }
 
-
         mStringList = list;
 
         //隐藏加载中
-
+        closePullRefresh();
         hidLoadingIngFucntion();
 
         if (mStringList == null || mStringList.size() == 0) {
@@ -1198,8 +1334,6 @@ public class PullRecyclerViewUtils {
             hidLoadingNoDataFunction();
         }
 
-
-        closePullRefresh();
 
         mHandler.postDelayed(new Runnable() {
             @Override
@@ -1213,7 +1347,12 @@ public class PullRecyclerViewUtils {
     }
 
     //更新加载更多的数据
-    public void updateMoreDataList(List<Object> list, boolean flag) {
+
+    /**
+     * @param list
+     * @param flag true 替换  false不替换
+     */
+    public void updateMoreDataList(final List<T> list, final boolean flag, List<Object> clist) {
 
         //更新加载标识
         mIsLoading = false;
@@ -1228,29 +1367,32 @@ public class PullRecyclerViewUtils {
             mStringList = new ArrayList<>();
         }
 
-
-        if (list != null && list.size() > 0) {
-            if (flag) {
-                mStringList = list;
-            } else {
+        if (flag) {
+            mStringList = list;
+        } else {
+            if (list != null) {
                 mStringList.addAll(list);
             }
+        }
 
+
+        if (clist == null || clist.size() == 0) {
+            mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_IS_NULL;
+        } else {
             mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_NOT_NULL;
 
-
-        } else {
-            mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_IS_NULL;
         }
 
         if (mStringList == null || mStringList.size() == 0) {
             //显示无数据页面
             log("显示无数据页面");
             showLoadingNoDataFunction();
+
             return;
         } else {
             log("隐藏无数据页面");
             hidLoadingNoDataFunction();
+
 
         }
 
@@ -1259,10 +1401,358 @@ public class PullRecyclerViewUtils {
         mHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
+                log("刷新页面 " + finalSize1);
+                mViewHolderAdapter.notifyItemRemoved(finalSize1);
                 mViewHolderAdapter.notifyItemChanged(finalSize1);
+
+
             }
         }, 600);
 
+
+    }
+
+    public <T> void addLoadingMoreDataList(final List<T> list) {
+        int size = 0;
+        if (mStringList != null) {
+            size = mStringList.size();
+        }
+        //隐藏加载中 无数据页面
+        hidLoadingIngFucntion();
+        hidLoadingNoDataFunction();
+        if (list == null || list.size() == 0) {
+            final int finalSize = size;
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    //无数据标识
+                    mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_IS_NULL;
+                    //更新
+                    mViewHolderAdapter.notifyItemChanged(finalSize);
+
+                }
+            }, 600);
+        } else {
+            final int finalSize = size;
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    //无数据标识
+                    mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_NOT_NULL;
+                    //更新
+                    mViewHolderAdapter.notifyItemChanged(finalSize);
+
+                }
+            }, 600);
+        }
+    }
+
+    public void setLoadingDataList(List<T> list) {
+
+
+        mIsLoading = false;
+
+        //隐藏加载中
+        //closePullRefresh();
+        if (list == null) {
+            list = new ArrayList<>();
+        }
+
+        log("recy mNetLoadingStatue " + mNetLoadingStatue);
+
+        switch (mNetLoadingStatue) {
+            case PULL_LOADING:
+                //下拉
+                //结束刷新状态
+                closePullRefresh();
+
+                if (list.size() == 0) {
+                    mStringList.clear();
+                    mViewHolderAdapter.notifyDataSetChanged();
+                    //显示无数据页面
+                    ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 0f, 1f);
+                    lAlphaAnimation.setDuration(300);
+                    lAlphaAnimation.setInterpolator(new LinearInterpolator());
+                    lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                        @Override
+                        public void onAnimationStart(Animator animator) {
+                            mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animator animator) {
+
+                        }
+                    });
+                    lAlphaAnimation.start();
+                } else {
+                    mStringList.clear();
+                    mViewHolderAdapter.notifyDataSetChanged();
+                    mStringList.addAll(list);
+                    //刷新
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mViewHolderAdapter.notifyDataSetChanged();
+                        }
+                    }, 400);
+                }
+                break;
+            case UP_LOADING:
+                //上拉
+                int lSize = mStringList.size();
+                mStringList.addAll(list);
+                if (list.size() == 0) {
+                    mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_IS_NULL;
+                    if (lSize==0) {
+                        mViewHolderAdapter.notifyDataSetChanged();
+                    }else {
+                        mViewHolderAdapter.notifyItemChanged(lSize);
+                    }
+                } else {
+                    mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_NOT_NULL;
+                    if (lSize==0) {
+                        mViewHolderAdapter.notifyDataSetChanged();
+                    }else {
+                        mViewHolderAdapter.notifyItemChanged(lSize);
+                    }
+                }
+                break;
+            //没有
+            case NO_LOADING:
+                break;
+            //
+            case CLICK_NO_DATA:
+                //无数据点击
+
+                if (list.size() == 0) {
+                    mStringList.clear();
+                    mViewHolderAdapter.notifyDataSetChanged();
+                    //隐藏加载中 显示无数据页面
+                    final ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 0f, 1f);
+                    lAlphaAnimation.setDuration(300);
+                    lAlphaAnimation.setInterpolator(new LinearInterpolator());
+                    lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                        @Override
+                        public void onAnimationStart(Animator animator) {
+                            mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animator animator) {
+
+                        }
+                    });
+
+                    if (mClickNoDataHidIngAndShowNoDataAnimator != null) {
+                        if (mClickNoDataHidIngAndShowNoDataAnimator.isRunning()) {
+                            mClickNoDataHidIngAndShowNoDataAnimator.cancel();
+                        }
+                    }
+                    mClickNoDataHidIngAndShowNoDataAnimator = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
+                    mClickNoDataHidIngAndShowNoDataAnimator.setDuration(300);
+                    mClickNoDataHidIngAndShowNoDataAnimator.setInterpolator(new LinearInterpolator());
+                    mClickNoDataHidIngAndShowNoDataAnimator.addListener(new Animator.AnimatorListener() {
+                        @Override
+                        public void onAnimationStart(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animator) {
+                            mLoadingIngLinearLayout.setVisibility(View.GONE);
+                            lAlphaAnimation.start();
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animator animator) {
+
+                        }
+                    });
+                    mClickNoDataHidIngAndShowNoDataAnimator.start();
+
+                } else {
+                    //隐藏加载中 显示数据页面
+                    if (mClickNoDataHidIngAndShowDataAnimator != null) {
+                        if (mClickNoDataHidIngAndShowDataAnimator.isRunning()) {
+                            mClickNoDataHidIngAndShowDataAnimator.cancel();
+                            mClickNoDataHidIngAndShowDataAnimator = null;
+                        }
+                    }
+                    mStringList.clear();
+                    mViewHolderAdapter.notifyDataSetChanged();
+                    mStringList .addAll(list);
+
+                    mClickNoDataHidIngAndShowDataAnimator = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
+                    mClickNoDataHidIngAndShowDataAnimator.setDuration(300);
+                    mClickNoDataHidIngAndShowDataAnimator.setInterpolator(new LinearInterpolator());
+                    mClickNoDataHidIngAndShowDataAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                            Float value = (Float) valueAnimator.getAnimatedValue();
+                            mLoadingIngLinearLayout.setAlpha(value);
+                            if (value==0){
+                                if (mLoadingIngLinearLayout.getVisibility()== View.VISIBLE) {
+                                    mLoadingIngLinearLayout.setVisibility(View.GONE);
+                                    //刷新数据
+                                    mViewHolderAdapter.notifyDataSetChanged();
+                                }
+                            }
+                        }
+                    });
+
+                    mClickNoDataHidIngAndShowDataAnimator.start();
+                }
+                break;
+            case DEFAULT_LOADING:
+                //第一次加载
+                mStringList.clear();
+                mStringList.addAll(list);
+
+                if (mStringList.size() == 0) {
+                    //隐藏加载中 显示无数据页面
+                    final ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 0f, 1f);
+                    lAlphaAnimation.setDuration(300);
+                    lAlphaAnimation.setInterpolator(new LinearInterpolator());
+                    lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                        @Override
+                        public void onAnimationStart(Animator animator) {
+                            mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animator animator) {
+
+                        }
+                    });
+
+                    ObjectAnimator lAlphaAnimation2 = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
+                    lAlphaAnimation2.setDuration(300);
+                    lAlphaAnimation2.setInterpolator(new LinearInterpolator());
+                    lAlphaAnimation2.addListener(new Animator.AnimatorListener() {
+                        @Override
+                        public void onAnimationStart(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animator) {
+                            mLoadingIngLinearLayout.setVisibility(View.GONE);
+                            lAlphaAnimation.start();
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animator) {
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animator animator) {
+
+                        }
+                    });
+                    lAlphaAnimation2.start();
+                } else {
+                    switch (mCurrentShowDefaultType) {
+                        case NO_DATA:
+                            //隐藏无数据页面 显示数据
+                            ObjectAnimator lAlphaAnimation2 = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 1f, 0f);
+                            lAlphaAnimation2.setDuration(300);
+                            lAlphaAnimation2.setInterpolator(new LinearInterpolator());
+                            lAlphaAnimation2.addListener(new Animator.AnimatorListener() {
+                                @Override
+                                public void onAnimationStart(Animator animator) {
+
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animator animator) {
+                                    mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                                    mViewHolderAdapter.notifyDataSetChanged();
+                                }
+
+                                @Override
+                                public void onAnimationCancel(Animator animator) {
+
+                                }
+
+                                @Override
+                                public void onAnimationRepeat(Animator animator) {
+
+                                }
+                            });
+                            lAlphaAnimation2.start();
+                            break;
+                        case LOADING:
+                            //隐藏加载中 显示数据
+                            ObjectAnimator lAlphaAnimation3 = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
+                            lAlphaAnimation3.setDuration(300);
+                            lAlphaAnimation3.setInterpolator(new LinearInterpolator());
+                            lAlphaAnimation3.addListener(new Animator.AnimatorListener() {
+                                @Override
+                                public void onAnimationStart(Animator animator) {
+
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animator animator) {
+                                    mLoadingIngLinearLayout.setVisibility(View.GONE);
+                                    mViewHolderAdapter.notifyDataSetChanged();
+                                }
+
+                                @Override
+                                public void onAnimationCancel(Animator animator) {
+
+                                }
+
+                                @Override
+                                public void onAnimationRepeat(Animator animator) {
+
+                                }
+                            });
+                            lAlphaAnimation3.start();
+                            break;
+                    }
+
+                }
+
+                break;
+        }
 
     }
 
@@ -1398,57 +1888,129 @@ public class PullRecyclerViewUtils {
 
     //显示加载无数数据内容
     public void showLoadingNoDataFunction() {
+
         if (mLoadingNoDataLinearLayout != null) {
-            ScaleAnimation lScaleAnimation = new ScaleAnimation(0f, 1f, 0f, 1f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
 
-            lScaleAnimation.setDuration(400);
-            lScaleAnimation.setInterpolator(new OvershootInterpolator());
-            lScaleAnimation.setAnimationListener(new Animation.AnimationListener() {
-                @Override
-                public void onAnimationStart(Animation animation) {
-                    mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
-                }
+            if (mLoadingIngLinearLayout.getVisibility() == View.VISIBLE) {
+                //先隐藏加载中
+                //再显示无数据
 
-                @Override
-                public void onAnimationEnd(Animation animation) {
+                final ObjectAnimator lAlphaAnimation2 = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 0f, 1f);
+                lAlphaAnimation2.setDuration(400);
+                lAlphaAnimation2.setInterpolator(new LinearInterpolator());
+                lAlphaAnimation2.addListener(new Animator.AnimatorListener() {
+                    @Override
+                    public void onAnimationStart(Animator animator) {
+                        mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    }
 
-                }
+                    @Override
+                    public void onAnimationEnd(Animator animator) {
+                        mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    }
 
-                @Override
-                public void onAnimationRepeat(Animation animation) {
+                    @Override
+                    public void onAnimationCancel(Animator animator) {
 
-                }
-            });
-            mLoadingNoDataLinearLayout.startAnimation(lScaleAnimation);
-        } else {
+                    }
 
+                    @Override
+                    public void onAnimationRepeat(Animator animator) {
+
+                    }
+                });
+
+                ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 10f, 0);
+                lAlphaAnimation.setDuration(400);
+                lAlphaAnimation.setInterpolator(new LinearInterpolator());
+                lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                    @Override
+                    public void onAnimationStart(Animator animator) {
+
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animator animator) {
+                        mLoadingIngLinearLayout.setVisibility(View.GONE);
+                        lAlphaAnimation2.start();
+                    }
+
+                    @Override
+                    public void onAnimationCancel(Animator animator) {
+
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animator animator) {
+
+                    }
+                });
+                lAlphaAnimation.start();
+
+
+            } else {
+
+                Log.d("hid", "隐藏加载中 2");
+                ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 0f, 1f);
+                lAlphaAnimation.setDuration(400);
+                lAlphaAnimation.setInterpolator(new LinearInterpolator());
+                lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                    @Override
+                    public void onAnimationStart(Animator animator) {
+                        mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animator animator) {
+                        mLoadingNoDataLinearLayout.setVisibility(View.VISIBLE);
+                    }
+
+                    @Override
+                    public void onAnimationCancel(Animator animator) {
+
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animator animator) {
+
+                    }
+                });
+                lAlphaAnimation.start();
+            }
         }
     }
 
     //隐藏加载无数数据内容
     public void hidLoadingNoDataFunction() {
-        if (mLoadingNoDataLinearLayout != null && mLoadingNoDataLinearLayout.getVisibility() == View.VISIBLE) {
-            ScaleAnimation lScaleAnimation = new ScaleAnimation(1f, 0f, 1f, 0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-            lScaleAnimation.setDuration(200);
-            lScaleAnimation.setInterpolator(new LinearInterpolator());
-            lScaleAnimation.setAnimationListener(new Animation.AnimationListener() {
+        if (mLoadingNoDataLinearLayout != null && mLoadingNoDataLinearLayout.getVisibility() == View.VISIBLE && mLoadingNoDataLinearLayout.getAlpha() == 1) {
+            Log.d("hid", "隐藏加载中 2");
+            ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 1f, 0f);
+            lAlphaAnimation.setDuration(400);
+            lAlphaAnimation.setInterpolator(new LinearInterpolator());
+            lAlphaAnimation.addListener(new Animator.AnimatorListener() {
                 @Override
-                public void onAnimationStart(Animation animation) {
+                public void onAnimationStart(Animator animator) {
 
                 }
 
                 @Override
-                public void onAnimationEnd(Animation animation) {
+                public void onAnimationEnd(Animator animator) {
+                    mLoadingNoDataLinearLayout.setAlpha(1f);
                     mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+
                 }
 
                 @Override
-                public void onAnimationRepeat(Animation animation) {
+                public void onAnimationCancel(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animator) {
 
                 }
             });
-            mLoadingNoDataLinearLayout.setAnimation(lScaleAnimation);
-            mLoadingNoDataLinearLayout.startAnimation(lScaleAnimation);
+            lAlphaAnimation.start();
         }
     }
 
@@ -1458,13 +2020,64 @@ public class PullRecyclerViewUtils {
         public void onClick(View view) {
 
             //隐藏加载无数据
-            hidLoadingNoDataFunction();
             //显示加载中
-            showLoadingIngFucntion();
-            //回调函数
-            if (mPullRecyclerViewLinserner != null) {
-                mPullRecyclerViewLinserner.loadMoreData();
-            }
+            final ObjectAnimator lAlphaAnimation1 = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 0f, 1f);
+            lAlphaAnimation1.setDuration(400);
+            lAlphaAnimation1.setInterpolator(new LinearInterpolator());
+            lAlphaAnimation1.addListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animator) {
+                    mLoadingIngLinearLayout.setVisibility(View.VISIBLE);
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animator) {
+                    //更新标识
+                    mNetLoadingStatue = NETLOADINGSTATE.CLICK_NO_DATA;
+                    //回调函数
+                    if (mPullRecyclerViewLinserner != null) {
+                        mPullRecyclerViewLinserner.loadMoreData();
+                    }
+
+                }
+
+                @Override
+                public void onAnimationCancel(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animator) {
+
+                }
+            });
+            ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingNoDataLinearLayout, "alpha", 1f, 0f);
+            lAlphaAnimation.setDuration(200);
+            lAlphaAnimation.setInterpolator(new LinearInterpolator());
+            lAlphaAnimation.addListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animator) {
+                    mLoadingNoDataLinearLayout.setVisibility(View.GONE);
+                    lAlphaAnimation1.start();
+                }
+
+                @Override
+                public void onAnimationCancel(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animator) {
+
+                }
+            });
+            lAlphaAnimation.start();
+
         }
     };
 
@@ -1494,56 +2107,68 @@ public class PullRecyclerViewUtils {
     public void showLoadingIngFucntion() {
         Log.d("hid", "显示加载中 1");
         if (mLoadingIngLinearLayout != null && mLoadingIngLinearLayout.getVisibility() == View.GONE) {
-            Log.d("hid", "显示加载中 2");
-            AlphaAnimation lAlphaAnimation = new AlphaAnimation(0f, 1f);
-            lAlphaAnimation.setDuration(600);
+            Log.d("hid", "隐藏加载中 2");
+            ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 0f, 1f);
+            lAlphaAnimation.setDuration(400);
             lAlphaAnimation.setInterpolator(new LinearInterpolator());
-            lAlphaAnimation.setAnimationListener(new Animation.AnimationListener() {
+            lAlphaAnimation.addListener(new Animator.AnimatorListener() {
                 @Override
-                public void onAnimationStart(Animation animation) {
+                public void onAnimationStart(Animator animator) {
+                    mLoadingIngLinearLayout.setAlpha(0);
                     mLoadingIngLinearLayout.setVisibility(View.VISIBLE);
                 }
 
                 @Override
-                public void onAnimationEnd(Animation animation) {
+                public void onAnimationEnd(Animator animator) {
                     mLoadingIngLinearLayout.setVisibility(View.VISIBLE);
+                    mLoadingIngLinearLayout.setAlpha(1f);
                 }
 
                 @Override
-                public void onAnimationRepeat(Animation animation) {
+                public void onAnimationCancel(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animator) {
 
                 }
             });
-            mLoadingIngLinearLayout.startAnimation(lAlphaAnimation);
+            lAlphaAnimation.start();
         }
     }
 
     //隐藏加载中
     public void hidLoadingIngFucntion() {
         Log.d("hid", "隐藏加载中 1");
-        if (mLoadingIngLinearLayout != null) {
+        if (mLoadingIngLinearLayout != null && mLoadingIngLinearLayout.getAlpha() == 1) {
             Log.d("hid", "隐藏加载中 2");
-            AlphaAnimation lAlphaAnimation = new AlphaAnimation(1f, 0f);
-            lAlphaAnimation.setDuration(600);
+            ObjectAnimator lAlphaAnimation = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
+            lAlphaAnimation.setDuration(400);
             lAlphaAnimation.setInterpolator(new LinearInterpolator());
-            lAlphaAnimation.setAnimationListener(new Animation.AnimationListener() {
+            lAlphaAnimation.addListener(new Animator.AnimatorListener() {
                 @Override
-                public void onAnimationStart(Animation animation) {
+                public void onAnimationStart(Animator animator) {
 
                 }
 
                 @Override
-                public void onAnimationEnd(Animation animation) {
+                public void onAnimationEnd(Animator animator) {
                     mLoadingIngLinearLayout.setVisibility(View.GONE);
+                    mLoadingIngLinearLayout.setAlpha(1f);
                 }
 
                 @Override
-                public void onAnimationRepeat(Animation animation) {
+                public void onAnimationCancel(Animator animator) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animator) {
 
                 }
             });
-            mLoadingIngLinearLayout.setAnimation(lAlphaAnimation);
-            mLoadingIngLinearLayout.startAnimation(lAlphaAnimation);
+            lAlphaAnimation.start();
         }
     }
 

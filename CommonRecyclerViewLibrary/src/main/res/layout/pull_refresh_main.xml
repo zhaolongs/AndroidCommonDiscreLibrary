@@ -62,16 +62,18 @@
             android:layout_marginTop="46dp"
             android:background="@drawable/bg_button_selector"
             android:paddingBottom="8dp"
-            android:paddingTop="8dp" />
+            android:paddingTop="8dp"
+            android:visibility="gone" />
 
         <!--加载中-->
         <LinearLayout
             android:id="@+id/ll_pull_refresh_loading_ing"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#99ffffff"
+            android:background="#ffffff"
             android:gravity="center"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="gone">
 
             <ProgressBar
                 android:layout_width="60dp"
@@ -97,13 +99,20 @@
             android:layout_height="match_parent"
             android:background="#ffffff"
             android:gravity="center"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <ImageView
+                android:id="@+id/iv_pull_refresh_loading_no_data"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/loading_no_data" />
 
             <TextView
                 android:id="@+id/tv_pull_refresh_loading_no_data"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="26dp"
                 android:background="@drawable/bg_button_selector"
                 android:paddingBottom="4dp"
                 android:paddingLeft="10dp"
