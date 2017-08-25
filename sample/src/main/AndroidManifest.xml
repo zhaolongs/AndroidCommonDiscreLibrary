@@ -17,6 +17,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".recy.RecycleyOneModelListActivity" />
+        <activity android:name=".recy.RecycleyTwoModelListActivity" />
     </application>
 
 </manifest>

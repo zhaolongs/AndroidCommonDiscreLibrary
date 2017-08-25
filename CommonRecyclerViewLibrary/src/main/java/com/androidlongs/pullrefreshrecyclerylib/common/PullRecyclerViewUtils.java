@@ -128,12 +128,24 @@ public class PullRecyclerViewUtils<T> {
     }
 
     /**
-     * @param context      上下文对象
-     * @param itemLayoutId 条目布局
-     * @param linserner    设置监听
+     * @param context          上下文对象
+     * @param itemLayoutId     条目布局
+     * @param linserner        设置监听
+     * @param defautlePageType 默认显示无数据页面
      */
     public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, PullRecyclerViewLinserner linserner, SHOW_DEFAUTLE_PAGE_TYPE defautlePageType) {
         return setRecyclerViewFunction(context, itemLayoutId, null, linserner, null, RECYCLRYVIEW_STATUE.PULL_AND_UP, defautlePageType, LOADING_NO_DATA_PAGE_TYPE.TEXT);
+    }
+
+    /**
+     * @param context          上下文对象
+     * @param itemLayoutId     条目布局
+     * @param dataList         数据
+     * @param linserner        设置监听
+     * @param defautlePageType 默认显示无数据页面
+     */
+    public RelativeLayout setRecyclerViewFunction(Context context, int itemLayoutId, List<T> dataList, PullRecyclerViewLinserner linserner, SHOW_DEFAUTLE_PAGE_TYPE defautlePageType) {
+        return setRecyclerViewFunction(context, itemLayoutId, dataList, linserner, null, RECYCLRYVIEW_STATUE.PULL_AND_UP, defautlePageType, LOADING_NO_DATA_PAGE_TYPE.TEXT);
     }
 
     /**
@@ -180,7 +192,8 @@ public class PullRecyclerViewUtils<T> {
             if (list == null) {
                 mStringList = new ArrayList<>();
             } else {
-                mStringList = list;
+                mStringList = new ArrayList<>();
+                mStringList.addAll(list);
             }
 
             //当前RecyclerView 的显示功能模式
@@ -1447,6 +1460,21 @@ public class PullRecyclerViewUtils<T> {
         }
     }
 
+    public void setRecyclerviewHeight(int flag) {
+        if (mRecyclerView != null) {
+
+            int lHeightPixels = mContext.getResources().getDisplayMetrics().heightPixels;
+            if (flag < 0 || flag > lHeightPixels) {
+                flag = lHeightPixels;
+            }
+
+            ViewGroup.LayoutParams lLayoutParams = mRecyclerView.getLayoutParams();
+            if (lLayoutParams != null) {
+                lLayoutParams.height = flag;
+            }
+        }
+    }
+
     public void setLoadingDataList(List<T> list) {
 
 
@@ -1514,16 +1542,16 @@ public class PullRecyclerViewUtils<T> {
                 mStringList.addAll(list);
                 if (list.size() == 0) {
                     mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_IS_NULL;
-                    if (lSize==0) {
+                    if (lSize == 0) {
                         mViewHolderAdapter.notifyDataSetChanged();
-                    }else {
+                    } else {
                         mViewHolderAdapter.notifyItemChanged(lSize);
                     }
                 } else {
                     mCurrentUpLoadingStatue = RECYCLERVIEW_UP_LOADING_STATUE.LIST_NOT_NULL;
-                    if (lSize==0) {
+                    if (lSize == 0) {
                         mViewHolderAdapter.notifyDataSetChanged();
-                    }else {
+                    } else {
                         mViewHolderAdapter.notifyItemChanged(lSize);
                     }
                 }
@@ -1606,7 +1634,7 @@ public class PullRecyclerViewUtils<T> {
                     }
                     mStringList.clear();
                     mViewHolderAdapter.notifyDataSetChanged();
-                    mStringList .addAll(list);
+                    mStringList.addAll(list);
 
                     mClickNoDataHidIngAndShowDataAnimator = ObjectAnimator.ofFloat(mLoadingIngLinearLayout, "alpha", 1f, 0f);
                     mClickNoDataHidIngAndShowDataAnimator.setDuration(300);
@@ -1616,8 +1644,8 @@ public class PullRecyclerViewUtils<T> {
                         public void onAnimationUpdate(ValueAnimator valueAnimator) {
                             Float value = (Float) valueAnimator.getAnimatedValue();
                             mLoadingIngLinearLayout.setAlpha(value);
-                            if (value==0){
-                                if (mLoadingIngLinearLayout.getVisibility()== View.VISIBLE) {
+                            if (value == 0) {
+                                if (mLoadingIngLinearLayout.getVisibility() == View.VISIBLE) {
                                     mLoadingIngLinearLayout.setVisibility(View.GONE);
                                     //刷新数据
                                     mViewHolderAdapter.notifyDataSetChanged();

@@ -9,13 +9,13 @@ import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.wisdom.library.R;
 import com.androidlongs.pullrefreshrecyclerylib.common.PullRecyclerViewUtils;
 import com.androidlongs.pullrefreshrecyclerylib.inter.PullRecyclerViewLinserner;
 import com.androidlongs.pullrefreshrecyclerylib.inter.PullRecyclerViewOnItemClickLinserner;
+import com.androidlongs.pullrefreshrecyclerylib.model.PullRecyclerMoreStatueModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +26,7 @@ import java.util.List;
  * 落在谷底，思人生
  */
 
-public class RecycleyOneModelListActivity extends Activity {
+public class RecycleyTwoModelListActivity extends Activity {
 
     private PullRecyclerViewUtils mPullRecyclerViewUtils;
     private List<Object> mStringList;
@@ -37,7 +37,7 @@ public class RecycleyOneModelListActivity extends Activity {
 
         setContentView(R.layout.activity_recy_main_layout);
 
-        test2();
+        test1();
 
     }
 
@@ -48,47 +48,21 @@ public class RecycleyOneModelListActivity extends Activity {
 
         mStringList = new ArrayList<>();
         for (int lI = 0; lI < 20; lI++) {
-            mStringList.add("test");
-        }
 
-        //初始化
-        mPullRecyclerViewUtils = PullRecyclerViewUtils.getInstance();
-
-        //设置一开始显示布局为加载中
-        RelativeLayout lRelativeLayout = mPullRecyclerViewUtils.setRecyclerViewFunction(
-                this.getApplicationContext(),
-                R.layout.item_recy_once_model_layout,//条目布局
-                mPullRecyclerViewLinserner,//设置监听回调
-                PullRecyclerViewUtils.SHOW_DEFAUTLE_PAGE_TYPE.LOADING
-        );
-
-
-        //添加布局
-        mainLinLayout.addView(lRelativeLayout);
-
-
-        //设置刷新布局条目背景
-        mPullRecyclerViewUtils.setPullRefshBackGroundColor(Color.WHITE);
-        //刷新字体
-        mPullRecyclerViewUtils.setPullRefshTextColorFunction(Color.BLUE);
-
-        //模拟网络加载数据
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                mPullRecyclerViewUtils.setLoadingDataList(null);
+            if (lI%3==0) {
+                PullRecyclerMoreStatueModel lPullRecyclerMoreStatueModel = new PullRecyclerMoreStatueModel();
+                lPullRecyclerMoreStatueModel.itemType=1;
+                lPullRecyclerMoreStatueModel.itemLayoutId=R.layout.item_recy_once_model_layout;
+                lPullRecyclerMoreStatueModel.model="test "+lI;
+                mStringList.add(lPullRecyclerMoreStatueModel);
+            }else {
+                PullRecyclerMoreStatueModel lPullRecyclerMoreStatueModel = new PullRecyclerMoreStatueModel();
+                lPullRecyclerMoreStatueModel.itemType=2;
+                lPullRecyclerMoreStatueModel.itemLayoutId=R.layout.item_recy_once_model_layout2;
+                lPullRecyclerMoreStatueModel.model="test "+lI;
+                mStringList.add(lPullRecyclerMoreStatueModel);
             }
-        },3000);
-    }
 
-    private void test2() {
-        LinearLayout mainLinLayout = findViewById(R.id.ll_recy_main_content);
-
-        //加载RecyclerView
-
-        mStringList = new ArrayList<>();
-        for (int lI = 0; lI < 20; lI++) {
-            mStringList.add("test");
         }
 
         //初始化
@@ -98,7 +72,6 @@ public class RecycleyOneModelListActivity extends Activity {
         RelativeLayout lRelativeLayout = mPullRecyclerViewUtils.setRecyclerViewFunction(
                 this.getApplicationContext(),
                 R.layout.item_recy_once_model_layout,//条目布局
-                mStringList,
                 mPullRecyclerViewLinserner,//设置监听回调
                 PullRecyclerViewUtils.SHOW_DEFAUTLE_PAGE_TYPE.LOADING
         );
@@ -109,6 +82,7 @@ public class RecycleyOneModelListActivity extends Activity {
 
         mPullRecyclerViewUtils.setRecyclerviewHeight(this.getWindowManager().getDefaultDisplay().getHeight());
 
+
         //设置刷新布局条目背景
         mPullRecyclerViewUtils.setPullRefshBackGroundColor(Color.WHITE);
         //刷新字体
@@ -118,10 +92,11 @@ public class RecycleyOneModelListActivity extends Activity {
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                mPullRecyclerViewUtils.setLoadingDataList(null);
+                mPullRecyclerViewUtils.setLoadingDataList(mStringList);
             }
         },3000);
     }
+
 
 
     private PullRecyclerViewLinserner mPullRecyclerViewLinserner = new PullRecyclerViewLinserner() {
@@ -129,12 +104,6 @@ public class RecycleyOneModelListActivity extends Activity {
         public void loadMoreData() {
 
             //加载更多
-            final List<Object> lStringList = new ArrayList<>();
-            for (int lI = 0; lI < 11; lI++) {
-                lStringList.add("test " + lI);
-            }
-
-            mStringList.addAll(lStringList);
 
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
@@ -151,12 +120,7 @@ public class RecycleyOneModelListActivity extends Activity {
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    final List<Object> lStringList = new ArrayList<>();
-                    for (int lI = 0; lI < 11; lI++) {
-                        lStringList.add("loading more test");
-                    }
-                    mStringList.clear();
-                    mPullRecyclerViewUtils.setLoadingDataList(mStringList);
+                    mPullRecyclerViewUtils.setLoadingDataList(null);
                 }
             }, 2000);
         }
@@ -164,16 +128,14 @@ public class RecycleyOneModelListActivity extends Activity {
         @Override
         public void setViewDatas(View itemView, int position, int itemType, Object object) {
 
-            TextView titleTextView = itemView.findViewById(R.id.tv_item_header_title);
 
-            titleTextView.setText("大秦帝国 " + position + " " + object);
         }
     };
 
     private PullRecyclerViewOnItemClickLinserner mPullRecyclerViewOnItemClickLinserner = new PullRecyclerViewOnItemClickLinserner() {
         @Override
         public void setonItemClick(int position, int itemType, Object object) {
-            Toast.makeText(RecycleyOneModelListActivity.this, "click " + position, Toast.LENGTH_SHORT).show();
+            Toast.makeText(RecycleyTwoModelListActivity.this, "click " + position, Toast.LENGTH_SHORT).show();
         }
     };
 

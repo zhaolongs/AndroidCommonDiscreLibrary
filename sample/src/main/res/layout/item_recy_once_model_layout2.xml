@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#e6e6e6"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:background="#fff"
+        android:orientation="vertical"
+        android:paddingBottom="10dp"
+        android:paddingLeft="10dp"
+        android:paddingTop="1dp">
+
+
+        <LinearLayout
+            android:layout_marginTop="12dp"
+            android:background="#f2f2f2"
+            android:gravity="center"
+            android:layout_marginRight="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_margin="10dp"
+                android:src="@drawable/loading_no_data" />
+
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="2dp"
+            android:layout_marginRight="14dp"
+            android:layout_marginTop="14dp"
+            android:text="电视剧《大秦帝国》讲述了战国时代的秦国经变法而由弱转强，东出与六国争霸进而一统天下，以及最后走向灭亡的过程。是一部以秦国为主要视点来展现战国时代波澜壮阔的史诗"
+            android:textColor="#969696"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+</RelativeLayout>

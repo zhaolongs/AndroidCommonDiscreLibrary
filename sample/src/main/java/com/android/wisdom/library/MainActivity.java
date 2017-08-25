@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 
 import com.android.wisdom.library.recy.RecycleyOneModelListActivity;
+import com.android.wisdom.library.recy.RecycleyTwoModelListActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -18,6 +19,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 MainActivity.this.startActivity(new Intent(MainActivity.this, RecycleyOneModelListActivity.class));
+            }
+        });
+
+        findViewById(R.id.bt_to_recyclerview_two_statue).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                MainActivity.this.startActivity(new Intent(MainActivity.this, RecycleyTwoModelListActivity.class));
             }
         });
     }

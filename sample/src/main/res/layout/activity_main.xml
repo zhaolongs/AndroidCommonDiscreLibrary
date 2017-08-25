@@ -17,10 +17,22 @@
             android:orientation="vertical">
 
             <Button
+                android:textColor="#0e219e"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
                 android:id="@+id/bt_to_recyclerview_no_statue"
                 android:layout_width="wrap_content"
                 android:background="@android:color/transparent"
                 android:text="RECY 单数据模型"
+                android:layout_height="wrap_content" />
+            <Button
+                android:textColor="#0e219e"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:id="@+id/bt_to_recyclerview_two_statue"
+                android:layout_width="wrap_content"
+                android:background="@android:color/transparent"
+                android:text="RECY 多数据模型"
                 android:layout_height="wrap_content" />
         </LinearLayout>
     </ScrollView>
